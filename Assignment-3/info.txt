@@ -1,0 +1,13 @@
+
+1. The proxy should operate in 2 modes : client and server. 
+
+2. The mode will be distinguished by the "- l" flag.
+When "- l" is used, the proxy will act as a server and listen to the port indicated by the -l flag. This can be done using some socket-programming libraries in C. Right ?
+
+3. Once the application reads the encrypted data, it will decrypt it using the key in the file "keyfile" (OpenSSL functions will be used for this).
+
+4. After decrypting the file, it will send the data to the host:port mentioned in the command. Again, this will be done by socket-programming.
+
+5. If the "- l" flag is not used, the proxy will act as client. In this case, it will keep listening to the input from stdin. Once it receives a line of input, it will encrypt it using the key in keyfile and OpenSSL functions. After this, it will send the data to the host:port. Right ?
+
+6. I am not sure how will we transfer the IV. Should the client first send the IV to the server and then transfer the data. In this case, should the client associate an indicator with each message, to tell if the message is IV or encrypted data and the server acts correspondingly. Please shed some light on this

@@ -1,0 +1,1 @@
+int pbproxy_server(int pb_port,char* real_server_ip,int real_server_port, char* keyfile);
