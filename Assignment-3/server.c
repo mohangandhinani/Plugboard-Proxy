@@ -91,12 +91,7 @@ pbproxy_server(int pb_port, char *real_server_ip, int real_server_port, char *ke
     actual_server_address.sin_port = htons(real_server_port);
 
 
-    //connect to pb_server
-    if (connect(server_fd, (struct sockaddr *) &actual_server_address, sizeof(actual_server_address)) < 0)
-    {
-        printf("connect to actual server failed  \n");
-        return -1;
-    }
+
     //-------------------------------------------------------------------------------------------------------------------
     while (1)
     {
@@ -106,33 +101,40 @@ pbproxy_server(int pb_port, char *real_server_ip, int real_server_port, char *ke
         if (fd_new < 0)
         {
             printf("Accept connection failed");
+        }
+        //connect to actual server
+        if (connect(server_fd, (struct sockaddr *) &actual_server_address, sizeof(actual_server_address)) < 0)
+        {
+            printf("connect to actual server failed  \n");
             return -1;
         }
-        FD_ZERO(&readfds);
-        FD_SET(fd_new, &readfds);
-        FD_SET(server_fd, &readfds);
-        select(Max(fd_new, server_fd) + 1, &readfds, NULL, NULL, NULL);
+
         while (1)
         {
-            printf("enterened in while 1");
+            FD_ZERO(&readfds);
+            FD_SET(fd_new, &readfds);
+            FD_SET(server_fd, &readfds);
+            select(Max(fd_new, server_fd) + 1, &readfds, NULL, NULL, NULL);
             if (FD_ISSET(server_fd, &readfds))
             {
                 bzero(read_buffer, 2048);
                 num_bytes_read = read(server_fd, read_buffer, 2048);
-                printf("data read from server %s",read_buffer);
+//                printf("data read from server %s",read_buffer);
                 if (num_bytes_read <= 0)
                 {
                     printf("Error reading data from server");
-                    return -1;
+                    close(fd_new);
+                    close(server_fd);
+                    break;
                 }
                 else
                 {
-                    printf("data sent to client %s",read_buffer);
-                    num_bytes_sent = write(fd_new, read_buffer, 2048);
-                    if (num_bytes_sent < 0)
+//                    printf("data sent to client %s",read_buffer);
+                    num_bytes_sent = write(fd_new, read_buffer, num_bytes_read);
+                    if (num_bytes_sent <= 0)
                     {
                         printf("Error sending data to client \n");
-                        return -1;
+                        break;
                     }
                 }
             }
@@ -140,25 +142,27 @@ pbproxy_server(int pb_port, char *real_server_ip, int real_server_port, char *ke
             {
                 bzero(read_buffer, 2048);
                 num_bytes_read = read(fd_new, read_buffer, 2048);
-                printf("data read from client %s",read_buffer);
+//                printf("data read from client %s",read_buffer);
                 if (num_bytes_read <= 0)
                 {
                     close(fd_new);
+                    close(server_fd);
                     break;
                 }
                 else
                 {
-                    num_bytes_sent = write(server_fd, read_buffer, 2048);
-                    printf("data sent to server %s",read_buffer);
-                    if (num_bytes_sent < 0)
+                    num_bytes_sent = write(server_fd, read_buffer, num_bytes_read);
+//                    printf("data sent to server %s",read_buffer);
+                    if (num_bytes_sent <= 0)
                     {
                         printf("error sending message to socket pb_client \n");
-                        return -1;
+                        break;
                     }
                 }
             }
         }
-        close(fd);
+        close(fd_new);
+        close(server_fd);
 
     }
 

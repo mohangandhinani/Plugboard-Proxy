@@ -12,7 +12,6 @@
 
 int pbproxy_client(char* dest_ip,int dest_port, char* key_file_path)
 {
-    printf("inside client");
     //variable declarations
     int pb_c_fd = 0,num_bytes_read,num_bytes_sent;
     struct sockaddr_in pb_server_address;
@@ -53,7 +52,6 @@ int pbproxy_client(char* dest_ip,int dest_port, char* key_file_path)
         printf("connect to pb server failed pb_proxy_c -> pb_proxy_s \n");
         return -1;
     }
-//    printf("Enter the message to encrypt :: ");
     while(1)
     {
         FD_ZERO(&readfds);
@@ -66,13 +64,16 @@ int pbproxy_client(char* dest_ip,int dest_port, char* key_file_path)
             //read from std in and send to server
 
             bzero(write_buffer,2048);
-            num_bytes_read = read( 0 , read_buffer, 2048);
+            num_bytes_read = read( 0 , write_buffer, 2048);
             if(num_bytes_read<0)
             {
                 printf("error reading stdin \n");
                 return -1;
             }
-            num_bytes_sent = write(pb_c_fd , write_buffer , strlen(write_buffer));
+//            fgets(write_buffer,2048,0);
+
+
+            num_bytes_sent = write(pb_c_fd , write_buffer , num_bytes_read);
             if(num_bytes_sent<0)
             {
                 printf("error sending message to socket pb_client \n");
@@ -90,9 +91,17 @@ int pbproxy_client(char* dest_ip,int dest_port, char* key_file_path)
                 printf("error reading socket pb_client \n");
                 return -1;
             }
-            printf("%s\n",read_buffer );
+//            printf("%s",read_buffer );
+
+            num_bytes_sent = write(1 , read_buffer , num_bytes_read);
+            if(num_bytes_sent<0)
+            {
+                printf("error writing to stdout\n");
+                return -1;
+            }
         }
 
     }
+    close(pb_c_fd);
     return 0;
 }
