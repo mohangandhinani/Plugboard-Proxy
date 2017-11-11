@@ -8,16 +8,17 @@
 #include <unistd.h>
 #include <netdb.h>
 #include <sys/socket.h>
-
-
+#include <sys/select.h>
 
 int pbproxy_client(char* dest_ip,int dest_port, char* key_file_path)
 {
+    printf("inside client");
     //variable declarations
     int pb_c_fd = 0,num_bytes_read,num_bytes_sent;
     struct sockaddr_in pb_server_address;
     struct hostent* s;
     char *hello = "Hello from client";
+    fd_set readfds;
     char read_buffer[2048];
     char write_buffer[2048];
     memset(read_buffer, 0,2048);
@@ -52,26 +53,46 @@ int pbproxy_client(char* dest_ip,int dest_port, char* key_file_path)
         printf("connect to pb server failed pb_proxy_c -> pb_proxy_s \n");
         return -1;
     }
-
-    //read from std in and send to server
-    printf("Enter the message to encrypt :: ");
-    bzero(write_buffer,2048);
-    fgets(write_buffer,2048,stdin);
-    num_bytes_sent = write(pb_c_fd , write_buffer , strlen(write_buffer));
-    if(num_bytes_sent<0)
+//    printf("Enter the message to encrypt :: ");
+    while(1)
     {
-        printf("error sending message to socket pb_client \n");
-        return -1;
-    }
+        FD_ZERO(&readfds);
+        FD_SET(0, &readfds);
+        FD_SET(pb_c_fd, &readfds);
+        select(pb_c_fd+1, &readfds, NULL, NULL, NULL);
 
-    //read message from server and send to stdout
-    bzero(read_buffer,2048);
-    num_bytes_read = read( pb_c_fd , read_buffer, 2048);
-    if(num_bytes_read<0)
-    {
-        printf("error reading socket pb_client \n");
-        return -1;
+        if (FD_ISSET(0, &readfds))
+        {
+            //read from std in and send to server
+
+            bzero(write_buffer,2048);
+            num_bytes_read = read( 0 , read_buffer, 2048);
+            if(num_bytes_read<0)
+            {
+                printf("error reading stdin \n");
+                return -1;
+            }
+            num_bytes_sent = write(pb_c_fd , write_buffer , strlen(write_buffer));
+            if(num_bytes_sent<0)
+            {
+                printf("error sending message to socket pb_client \n");
+                return -1;
+            }
+        }
+
+        if(FD_ISSET(pb_c_fd, &readfds))
+        {
+            //read message from server and send to stdout
+            bzero(read_buffer,2048);
+            num_bytes_read = read( pb_c_fd , read_buffer, 2048);
+            if(num_bytes_read<0)
+            {
+                printf("error reading socket pb_client \n");
+                return -1;
+            }
+            printf("%s\n",read_buffer );
+        }
+
     }
-    printf("%s\n",read_buffer );
     return 0;
 }
