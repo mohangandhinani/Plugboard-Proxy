@@ -68,27 +68,7 @@ pbproxy_server(int pb_port, char *real_server_ip, int real_server_port, char *ke
 
     //---------------------------------------------------------------------------------------
 
-    //create socket
-    server_fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (server_fd < 0)
-    {
-        printf("pb server socket creation error \n");
-        return -1;
-    }
 
-    //Get server address
-    s1 = gethostbyname(real_server_ip);
-    if (s1 == NULL)
-    {
-        printf("get server address failed");
-        return -1;
-    }
-
-    //set port and other details
-    bzero((char *) &actual_server_address, sizeof(actual_server_address));
-    actual_server_address.sin_family = AF_INET;
-    bcopy((char *) s1->h_addr, (char *) &actual_server_address.sin_addr.s_addr, s1->h_length);
-    actual_server_address.sin_port = htons(real_server_port);
 
 
 
@@ -102,10 +82,34 @@ pbproxy_server(int pb_port, char *real_server_ip, int real_server_port, char *ke
         {
             printf("Accept connection failed");
         }
+
+        //create socket
+        server_fd = socket(AF_INET, SOCK_STREAM, 0);
+        if (server_fd < 0)
+        {
+            printf("pb server socket creation error \n");
+            return -1;
+        }
+
+        //Get server address
+        s1 = gethostbyname(real_server_ip);
+        if (s1 == NULL)
+        {
+            printf("get server address failed");
+            return -1;
+        }
+
+        //set port and other details
+        bzero((char *) &actual_server_address, sizeof(actual_server_address));
+        actual_server_address.sin_family = AF_INET;
+        bcopy((char *) s1->h_addr, (char *) &actual_server_address.sin_addr.s_addr, s1->h_length);
+        actual_server_address.sin_port = htons(real_server_port);
+
         //connect to actual server
         if (connect(server_fd, (struct sockaddr *) &actual_server_address, sizeof(actual_server_address)) < 0)
         {
             printf("connect to actual server failed  \n");
+            exit(EXIT_FAILURE);
             return -1;
         }
 
@@ -123,8 +127,6 @@ pbproxy_server(int pb_port, char *real_server_ip, int real_server_port, char *ke
                 if (num_bytes_read <= 0)
                 {
                     printf("Error reading data from server");
-                    close(fd_new);
-                    close(server_fd);
                     break;
                 }
                 else
@@ -145,8 +147,6 @@ pbproxy_server(int pb_port, char *real_server_ip, int real_server_port, char *ke
 //                printf("data read from client %s",read_buffer);
                 if (num_bytes_read <= 0)
                 {
-                    close(fd_new);
-                    close(server_fd);
                     break;
                 }
                 else
@@ -161,6 +161,7 @@ pbproxy_server(int pb_port, char *real_server_ip, int real_server_port, char *ke
                 }
             }
         }
+        printf("outside while");
         close(fd_new);
         close(server_fd);
 

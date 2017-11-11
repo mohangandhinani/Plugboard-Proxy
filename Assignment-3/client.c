@@ -28,6 +28,7 @@ int pbproxy_client(char* dest_ip,int dest_port, char* key_file_path)
     if (pb_c_fd < 0)
     {
         printf("pb client socket creation error \n");
+        exit(EXIT_FAILURE);
         return -1;
     }
 
@@ -36,6 +37,7 @@ int pbproxy_client(char* dest_ip,int dest_port, char* key_file_path)
     if(s==NULL)
     {
         printf("get server address failed");
+        exit(EXIT_FAILURE);
         return -1;
     }
 
@@ -50,7 +52,7 @@ int pbproxy_client(char* dest_ip,int dest_port, char* key_file_path)
     if (connect(pb_c_fd, (struct sockaddr *)&pb_server_address, sizeof(pb_server_address)) < 0)
     {
         printf("connect to pb server failed pb_proxy_c -> pb_proxy_s \n");
-        return -1;
+        exit(EXIT_FAILURE);
     }
     while(1)
     {
@@ -65,10 +67,10 @@ int pbproxy_client(char* dest_ip,int dest_port, char* key_file_path)
 
             bzero(write_buffer,2048);
             num_bytes_read = read( 0 , write_buffer, 2048);
-            if(num_bytes_read<0)
+            if(num_bytes_read<=0)
             {
                 printf("error reading stdin \n");
-                return -1;
+                break;
             }
 //            fgets(write_buffer,2048,0);
 
@@ -77,7 +79,7 @@ int pbproxy_client(char* dest_ip,int dest_port, char* key_file_path)
             if(num_bytes_sent<0)
             {
                 printf("error sending message to socket pb_client \n");
-                return -1;
+                exit(EXIT_FAILURE);
             }
         }
 
@@ -86,18 +88,18 @@ int pbproxy_client(char* dest_ip,int dest_port, char* key_file_path)
             //read message from server and send to stdout
             bzero(read_buffer,2048);
             num_bytes_read = read( pb_c_fd , read_buffer, 2048);
-            if(num_bytes_read<0)
+            if(num_bytes_read<=0)
             {
                 printf("error reading socket pb_client \n");
-                return -1;
+                break;
             }
 //            printf("%s",read_buffer );
 
             num_bytes_sent = write(1 , read_buffer , num_bytes_read);
-            if(num_bytes_sent<0)
+            if(num_bytes_sent<=0)
             {
                 printf("error writing to stdout\n");
-                return -1;
+                exit(EXIT_FAILURE);
             }
         }
 
