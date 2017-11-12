@@ -3,13 +3,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include "encrypt_decrypt.h"
 
-struct ctr_state
-{
-    unsigned char ivec[AES_BLOCK_SIZE];
-    unsigned int num;
-    unsigned char ecount[AES_BLOCK_SIZE];
-};
 
 void
 init_ctr(struct ctr_state *state, const unsigned char iv[16])
@@ -25,9 +20,8 @@ init_ctr(struct ctr_state *state, const unsigned char iv[16])
     /* Copy IV into 'ivec' */
     memcpy(state->ivec, iv, 8);
 }
-
 void
-encrypt_text(char *input_text, int len,char *encrypted_text, char *encryption_key,char* iv)
+encrypt_text(char *input_text, int len, char *encrypted_text, char *encryption_key, char *iv)
 {
 
     AES_KEY key_struct;
@@ -55,7 +49,7 @@ encrypt_text(char *input_text, int len,char *encrypted_text, char *encryption_ke
 }
 
 void
-decrypt_text(char *input_text, int len,char *decrypted_text, char *encryption_key,char* iv)
+decrypt_text(char *input_text, int len, char *decrypted_text, char *encryption_key, char *iv)
 {
     AES_KEY key_struct;
     struct ctr_state initial_state;
@@ -74,7 +68,7 @@ decrypt_text(char *input_text, int len,char *decrypted_text, char *encryption_ke
                        &initial_state.num);
 
 }
-
+/*
 int
 main()
 {
@@ -83,9 +77,9 @@ main()
     char *encrypted_text = (char *) malloc(strlen(input_text) * sizeof(char) + 1);
     char *decrypted_text = (char *) malloc(strlen(input_text) * sizeof(char) + 1);
     char *key = "1234567812345678";
-    encrypt_text(input_text,strlen(input_text),encrypted_text, key,iv);
+    encrypt_text(input_text, strlen(input_text), encrypted_text, key, iv);
     printf("encrypted text is %s\n", encrypted_text);
-    decrypt_text(encrypted_text,strlen(input_text), decrypted_text, key,iv);
+    decrypt_text(encrypted_text, strlen(input_text), decrypted_text, key, iv);
     printf("decrypted text is %s\n", decrypted_text);
     return 0;
-}
+}*/

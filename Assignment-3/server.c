@@ -8,11 +8,16 @@
 #include <netdb.h>
 #include <sys/socket.h>
 #define Max(x, y) (((x) > (y)) ? (x) : (y))
-
+#include <openssl/aes.h>
+#include <openssl/rand.h>
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include "encrypt_decrypt.h"
 int
-pbproxy_server(int pb_port, char *real_server_ip, int real_server_port, char *keyfile)
+pbproxy_server(int pb_port, char *real_server_ip, int real_server_port, char *key_value)
 {
-    printf("inside server");
+    printf("inside server\n");
     int server_fd, new_socket, num_bytes_read, num_bytes_write,num_bytes_sent;
     struct sockaddr_in address, actual_server_address;
     int opt = 1;
@@ -24,8 +29,15 @@ pbproxy_server(int pb_port, char *real_server_ip, int real_server_port, char *ke
     char *server_reply = "From server :: Received ur message";
     char read_buffer[2048];
     char write_buffer[2048];
+    char enc_write_buffer[2048];
+    char dec_read_buffer[2048];
     memset(read_buffer, 0,2048);
     memset(write_buffer, 0,2048);
+    AES_KEY key_struct;
+    AES_KEY key_struct1;
+    struct ctr_state initial_state;
+    char enc_iv[AES_BLOCK_SIZE];
+    char dec_iv[AES_BLOCK_SIZE];
 
     //variable declaration
     int fd, bind_value, len, fd_new;
@@ -68,11 +80,6 @@ pbproxy_server(int pb_port, char *real_server_ip, int real_server_port, char *ke
 
     //---------------------------------------------------------------------------------------
 
-
-
-
-
-    //-------------------------------------------------------------------------------------------------------------------
     while (1)
     {
         //Accept the 1st connection in queue and create a socket for that
@@ -113,6 +120,40 @@ pbproxy_server(int pb_port, char *real_server_ip, int real_server_port, char *ke
             return -1;
         }
 
+        //initialise decryption
+        AES_KEY key_struct1;
+        struct ctr_state initial_state1;
+        if (AES_set_encrypt_key((unsigned const char *) key_value, 128, &key_struct) < 0)
+        {
+            printf("decrypt key setting failed\n");
+        }
+        num_bytes_read = read(fd_new, dec_iv, AES_BLOCK_SIZE);
+        if (num_bytes_read < 0)
+        {
+            printf("error reading iv from client \n");
+            exit(EXIT_FAILURE);
+        }
+        init_ctr(&initial_state1, dec_iv);
+
+        //initialise encryption(generate iv and init ctr)
+        if (!RAND_bytes(enc_iv, AES_BLOCK_SIZE))
+        {
+            printf("Random byte creation failed\n");
+        }
+
+        if (AES_set_encrypt_key((unsigned const char *) key_value, 128, &key_struct) < 0)
+        {
+            printf("encrypt key setting failed\n");
+        }
+
+        init_ctr(&initial_state, enc_iv);
+        num_bytes_sent = write(fd_new, enc_iv, AES_BLOCK_SIZE);
+        if (num_bytes_sent < 0)
+        {
+            printf("error sending iv to client \n");
+            exit(EXIT_FAILURE);
+        }
+
         while (1)
         {
             FD_ZERO(&readfds);
@@ -123,7 +164,7 @@ pbproxy_server(int pb_port, char *real_server_ip, int real_server_port, char *ke
             {
                 bzero(read_buffer, 2048);
                 num_bytes_read = read(server_fd, read_buffer, 2048);
-//                printf("data read from server %s",read_buffer);
+                printf("data read from server %s",read_buffer);
                 if (num_bytes_read <= 0)
                 {
                     printf("Error reading data from server");
@@ -131,8 +172,16 @@ pbproxy_server(int pb_port, char *real_server_ip, int real_server_port, char *ke
                 }
                 else
                 {
-//                    printf("data sent to client %s",read_buffer);
-                    num_bytes_sent = write(fd_new, read_buffer, num_bytes_read);
+
+                    AES_ctr128_encrypt(read_buffer,
+                                       enc_write_buffer,
+                                       num_bytes_read,
+                                       &key_struct,
+                                       initial_state.ivec,
+                                       initial_state.ecount,
+                                       &initial_state.num);
+                    num_bytes_sent = write(fd_new, enc_write_buffer, num_bytes_read);
+                    printf("data sent to client %s\n",enc_write_buffer);
                     if (num_bytes_sent <= 0)
                     {
                         printf("Error sending data to client \n");
@@ -144,15 +193,22 @@ pbproxy_server(int pb_port, char *real_server_ip, int real_server_port, char *ke
             {
                 bzero(read_buffer, 2048);
                 num_bytes_read = read(fd_new, read_buffer, 2048);
-//                printf("data read from client %s",read_buffer);
+                printf("data received from client %s\n",read_buffer);
+                AES_ctr128_encrypt(read_buffer,
+                                   dec_read_buffer,
+                                   num_bytes_read,
+                                   &key_struct,
+                                   initial_state1.ivec,
+                                   initial_state1.ecount,
+                                   &initial_state1.num);
                 if (num_bytes_read <= 0)
                 {
                     break;
                 }
                 else
                 {
-                    num_bytes_sent = write(server_fd, read_buffer, num_bytes_read);
-//                    printf("data sent to server %s",read_buffer);
+                    num_bytes_sent = write(server_fd, dec_read_buffer, num_bytes_read);
+                    printf("data sent to server %s",dec_read_buffer);
                     if (num_bytes_sent <= 0)
                     {
                         printf("error sending message to socket pb_client \n");

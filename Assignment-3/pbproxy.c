@@ -18,6 +18,9 @@ main(int argc, char **argv)
     char* destination_server_ip=NULL;
     int destination_server_port = 0;
     char* keyfilepath = NULL;
+    long l;
+    FILE *f;
+    char *key_value = "";
 
     char opt;
     while ((opt = getopt(argc, argv, "k:l:")) != -1)
@@ -28,7 +31,25 @@ main(int argc, char **argv)
             {
                 key_flag = 1;
                 keyfilepath = optarg;
+                //initialize the enc_key
+
+                FILE *key_file = fopen(keyfilepath, "rb");
+                if(f)
+                {
+                    fseek(key_file, 0, SEEK_END);
+                    l = ftell(key_file);
+                    key_value = malloc(l);
+
+                    fseek(key_file, 0, SEEK_SET);
+
+                    if(key_value)
+                    {
+                        fread(key_value, 1, l, key_file);
+                    }
+                    fclose(key_file);
+                }
                 break;
+
             }
 
             case 'l':
@@ -48,9 +69,10 @@ main(int argc, char **argv)
     }
     if(key_flag==0)
     {
-        printf("Please pass mandatory argument key file");
-        return 0;
+        key_value = "1234567800001234";
     }
+
+    printf("key value is %s",key_value);
     int entry = 0;
     for (int argv_index = optind; argv_index < argc; argv_index++)
     {
@@ -78,13 +100,13 @@ main(int argc, char **argv)
 
     if(server_mode_flag)
     {
-        pbproxy_server(s_proxy_in_port,destination_server_ip,destination_server_port, keyfilepath);
+        pbproxy_server(s_proxy_in_port,destination_server_ip,destination_server_port, key_value);
 
 
     }
     else
     {
-        pbproxy_client(destination_server_ip,destination_server_port,keyfilepath);
+        pbproxy_client(destination_server_ip,destination_server_port,key_value);
     }
 
 }
